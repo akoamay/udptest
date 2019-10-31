@@ -14,7 +14,7 @@ public class App {
 
     public App(String mode) {
 
-        int size = 5024;
+        int size = 65000;
         try {
             DatagramChannel ch = DatagramChannel.open();
             int cnt = 0;
@@ -37,7 +37,7 @@ public class App {
 
                 try {
                     for (int i = 0; i < 1024; i++) {
-                        Thread.sleep(10);
+                        Thread.sleep(5);
                         byte[] map = new byte[size];
                         ByteBuffer buf = ByteBuffer.allocate(size);
                         buf.clear();
