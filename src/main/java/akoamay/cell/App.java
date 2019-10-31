@@ -14,7 +14,7 @@ public class App {
 
     public App(String mode) {
 
-        int size = 1024;
+        int size = 5024;
         try {
             DatagramChannel ch = DatagramChannel.open();
             int cnt = 0;
@@ -35,16 +35,21 @@ public class App {
             } else {
                 ch.socket().bind(new InetSocketAddress(9999));
 
-                for (int i = 0; i < 10; i++) {
-                    byte[] map = new byte[size];
-                    ByteBuffer buf = ByteBuffer.allocate(size);
-                    buf.clear();
-                    buf.put(map);
-                    buf.flip();
-                    // int sent = ch.send(buf, new InetSocketAddress("localhost", 1234));
-                    int sent = ch.send(buf,
-                            new InetSocketAddress("ec2-18-222-183-235.us-east-2.compute.amazonaws.com", 1234));
-                    System.out.println(sent + " sent");
+                try {
+                    for (int i = 0; i < 1024; i++) {
+                        Thread.sleep(10);
+                        byte[] map = new byte[size];
+                        ByteBuffer buf = ByteBuffer.allocate(size);
+                        buf.clear();
+                        buf.put(map);
+                        buf.flip();
+                        // int sent = ch.send(buf, new InetSocketAddress("localhost", 1234));
+                        int sent = ch.send(buf,
+                                new InetSocketAddress("ec2-18-222-183-235.us-east-2.compute.amazonaws.com", 1234));
+                        System.out.println(sent + " sent");
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
 
             }
