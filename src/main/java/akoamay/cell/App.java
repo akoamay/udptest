@@ -14,34 +14,38 @@ public class App {
 
     public App(String mode) {
 
-        int size = 65000;
+        int size = 1024;
         try {
             DatagramChannel ch = DatagramChannel.open();
+            int cnt = 0;
             if (mode.equals("s")) {
                 ch.socket().bind(new InetSocketAddress(1234));
 
                 ByteBuffer buf = ByteBuffer.allocate(size);
-                buf.clear();
 
-                System.out.println("waiting");
-                ch.receive(buf);
-                System.out.println("received");
-                buf.flip();
-                byte[] data = new byte[buf.limit()];
-                buf.get(data);
-                System.out.println("received:" + data.length);
+                while (true) {
+                    buf.clear();
+                    ch.receive(buf);
+                    buf.flip();
+                    byte[] data = new byte[buf.limit()];
+                    buf.get(data);
+                    System.out.println("received:" + cnt + "\t" + data.length);
+                    cnt++;
+                }
             } else {
                 ch.socket().bind(new InetSocketAddress(9999));
 
-                byte[] map = new byte[size];
-                ByteBuffer buf = ByteBuffer.allocate(size);
-                buf.clear();
-                buf.put(map);
-                buf.flip();
-
-                System.out.println("sending");
-                int sent = ch.send(buf, new InetSocketAddress("localhost", 1234));
-                System.out.println(sent + " sent");
+                for (int i = 0; i < 10; i++) {
+                    byte[] map = new byte[size];
+                    ByteBuffer buf = ByteBuffer.allocate(size);
+                    buf.clear();
+                    buf.put(map);
+                    buf.flip();
+                    // int sent = ch.send(buf, new InetSocketAddress("localhost", 1234));
+                    int sent = ch.send(buf,
+                            new InetSocketAddress("ec2-18-222-183-235.us-east-2.compute.amazonaws.com", 1234));
+                    System.out.println(sent + " sent");
+                }
 
             }
         } catch (Exception e) {
