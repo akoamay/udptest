@@ -1,34 +1,51 @@
 package akoamay.cell;
 
-import java.awt.*;
-import javax.swing.*;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
+
+import ch.qos.logback.classic.AsyncAppender;
 
 public class App {
-
-    int w = 800;
-    int h = 600;
 
     public static void main(String[] args) {
         new App(args[0]);
     }
 
     public App(String mode) {
-        JFrame frame = new JFrame("Flooding simulator");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(w, h);
-        frame.setLocationRelativeTo(null);
-        // setBounds(x, y, w, h);
 
-        frame.setVisible(true);
+        int size = 65000;
+        try {
+            DatagramChannel ch = DatagramChannel.open();
+            if (mode.equals("s")) {
+                ch.socket().bind(new InetSocketAddress(1234));
 
-        SimulationCanvas canvas = new SimulationCanvas(w, h);
+                ByteBuffer buf = ByteBuffer.allocate(size);
+                buf.clear();
 
-        JPanel pane = new JPanel();
-        frame.getContentPane().add(pane);
+                System.out.println("waiting");
+                ch.receive(buf);
+                System.out.println("received");
+                buf.flip();
+                byte[] data = new byte[buf.limit()];
+                buf.get(data);
+                System.out.println("received:" + data.length);
+            } else {
+                ch.socket().bind(new InetSocketAddress(9999));
 
-        canvas.setPreferredSize(new Dimension(w, h));
-        pane.add(canvas);
+                byte[] map = new byte[size];
+                ByteBuffer buf = ByteBuffer.allocate(size);
+                buf.clear();
+                buf.put(map);
+                buf.flip();
 
-        frame.setVisible(true);
+                System.out.println("sending");
+                int sent = ch.send(buf, new InetSocketAddress("localhost", 1234));
+                System.out.println(sent + " sent");
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
