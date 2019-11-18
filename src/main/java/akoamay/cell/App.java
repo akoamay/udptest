@@ -61,11 +61,10 @@ public class App {
                 }
 
             }
-            ttl / = 1024 * 1024;
+            ttl /= 1024 * 1024;
             System.out.println("total sent= " + ttl + "MB");
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 }
-
