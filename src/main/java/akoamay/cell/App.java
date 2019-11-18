@@ -39,7 +39,8 @@ public class App {
                     buf.flip();
                     byte[] data = new byte[buf.limit()];
                     buf.get(data);
-                    System.out.println("received:" + cnt + "\t" + data.length);
+                    int mttl = ttl / (1024 * 1024);
+                    System.out.println("received:" + cnt + "\t" + data.length + "\t" + mttl);
                     ttl += data.length;
                     cnt++;
                 }
@@ -57,7 +58,7 @@ public class App {
                             new InetSocketAddress("ec2-18-218-244-32.us-east-2.compute.amazonaws.com", 1234));
                     System.out.println(sent + " sent");
                     ttl += size;
-                    Thread.sleep(50);
+                    Thread.sleep(5);
                 }
 
             }
