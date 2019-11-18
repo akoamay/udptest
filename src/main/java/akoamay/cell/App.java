@@ -37,7 +37,7 @@ public class App {
 
                 try {
                     for (int i = 0; i < 1024; i++) {
-                        Thread.sleep(5);
+                        Thread.sleep(50);
                         byte[] map = new byte[size];
                         ByteBuffer buf = ByteBuffer.allocate(size);
                         buf.clear();
