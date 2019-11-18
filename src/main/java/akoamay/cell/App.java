@@ -40,7 +40,7 @@ public class App {
                     byte[] data = new byte[buf.limit()];
                     buf.get(data);
                     System.out.println("received:" + cnt + "\t" + data.length);
-                    ttl += data.lenth;
+                    ttl += data.length;
                     cnt++;
                 }
             } else {
