@@ -1,69 +1,148 @@
 package akoamay.cell;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import ch.qos.logback.classic.AsyncAppender;
 
 public class App {
 
-    int m = 10;
+    int m = 5;
     int mb10 = 10485760;
+    String host = "localhost";
 
     public static void main(String[] args) {
-        new App(args[0], args[1]);
+        new App(args[0], args[1], args[2]);
     }
 
-    public App(String mode, String s) {
+    byte[] shorts2bytes(short[] input) {
+        int index;
+        int iterations = input.length;
 
+        ByteBuffer bb = ByteBuffer.allocate(input.length * 2);
+
+        for (index = 0; index != iterations; ++index) {
+            bb.putShort(input[index]);
+        }
+
+        return bb.array();
+    }
+
+    public static byte[] zipBytes(byte[] input) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ZipOutputStream zos = new ZipOutputStream(baos);
+            ZipEntry entry = new ZipEntry("hoge");
+            zos.putNextEntry(entry);
+            zos.write(input);
+            zos.closeEntry();
+            zos.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public void client(int m, int w) throws IOException, InterruptedException {
+        int len = 1024;
+        int cnt = 0;
+        short[] smap = new short[len * len];
+        for (int i = 0; i < len * len; i++) {
+            smap[i] = (short) (Math.random() * 10);
+        }
+        System.out.println("smap.len=" + smap.length);
+        byte[] map = shorts2bytes(smap);
+        System.out.println("omap.len=" + map.length);
+        byte[] zmap = zipBytes(map);
+        System.out.println("zmap.len=" + zmap.length);
+
+        int size = 1024 * m;
+        int send_cnt = zmap.length / size;
+
+        int p = (int) Math.random() * 65535;
+        DatagramChannel ch = DatagramChannel.open();
+        ch.socket().bind(new InetSocketAddress(p));
+
+        int bs = zmap.length;
+        int ks = zmap.length / 1024;
+        int ms = zmap.length / 1024 / 1024;
+        System.out.println("data size=" + bs + "byte " + ks + "kb " + ms + " mb");
+
+        ByteBuffer buf = ByteBuffer.allocate(size);
         int ttl = 0;
+        for (int i = 0; i < send_cnt; i++) {
+            buf.clear();
+            buf.put(zmap, size * i, size);
+            buf.flip();
+            int sent = ch.send(buf, new InetSocketAddress(host, 1234));
+            System.out.println(sent + " sent");
+            ttl += size;
+            Thread.sleep(w);
+            cnt++;
+        }
+
+        if (zmap.length % size != 0) {
+            buf.clear();
+            buf.put(zmap, size * (send_cnt - 1), zmap.length % size);
+            buf.flip();
+            int sent = ch.send(buf, new InetSocketAddress(host, 1234));
+            System.out.println(sent + " sent");
+            ttl += zmap.length % size;
+            cnt++;
+        }
+
+        bs = ttl;
+        ks = ttl / 1024;
+        ms = ttl / 1024 / 1024;
+        System.out.println("total sent= " + bs + "byte " + ks + "kb " + ms + "mb \tcnt=" + cnt);
+    }
+
+    public void server(int m) throws IOException {
+        DatagramChannel ch = DatagramChannel.open();
+        int cnt = 0;
+        int ttl = 0;
+        ch.socket().bind(new InetSocketAddress(1234));
+
+        int size = 1024 * m;
+        ByteBuffer buf = ByteBuffer.allocate(size);
+
+        while (true) {
+            buf.clear();
+            System.out.println(ch.receive(buf));
+            buf.flip();
+            byte[] data = new byte[buf.limit()];
+            buf.get(data);
+            ttl += data.length;
+            int bs = ttl;
+            int ks = ttl / 1024;
+            int ms = ttl / 1024 / 1024;
+            System.out.println("received:" + cnt + "\t" + data.length + "\t" + bs + "byte " + ks + "kb " + ms + "mb");
+            cnt++;
+        }
+    }
+
+    public App(String mode, String s, String s2) {
+
+        int w = 5;
 
         try {
             m = Integer.parseInt(s);
+            w = Integer.parseInt(s2);
         } catch (Exception e) {
         }
 
-        int size = 1024 * m;
         try {
-            DatagramChannel ch = DatagramChannel.open();
-            int cnt = 0;
             if (mode.equals("s")) {
-                ch.socket().bind(new InetSocketAddress(1234));
-
-                ByteBuffer buf = ByteBuffer.allocate(size);
-
-                while (true) {
-                    buf.clear();
-                    ch.receive(buf);
-                    buf.flip();
-                    byte[] data = new byte[buf.limit()];
-                    buf.get(data);
-                    int mttl = ttl / (1024 * 1024);
-                    System.out.println("received:" + cnt + "\t" + data.length + "\t" + mttl);
-                    ttl += data.length;
-                    cnt++;
-                }
+                server(m);
             } else {
-                ch.socket().bind(new InetSocketAddress(9999));
-
-                for (int i = 0; i < mb10 / (1024 * m); i++) {
-                    byte[] map = new byte[size];
-                    ByteBuffer buf = ByteBuffer.allocate(size);
-                    buf.clear();
-                    buf.put(map);
-                    buf.flip();
-                    // int sent = ch.send(buf, new InetSocketAddress("localhost", 1234));
-                    int sent = ch.send(buf,
-                            new InetSocketAddress("ec2-18-218-244-32.us-east-2.compute.amazonaws.com", 1234));
-                    System.out.println(sent + " sent");
-                    ttl += size;
-                    Thread.sleep(5);
-                }
-
+                client(m, w);
             }
-            ttl /= 1024 * 1024;
-            System.out.println("total sent= " + ttl + "MB");
         } catch (Exception e) {
             e.printStackTrace();
         }
