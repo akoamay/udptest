@@ -1,20 +1,27 @@
 package akoamay.cell;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 import ch.qos.logback.classic.AsyncAppender;
 
 public class App {
+    public static final byte START = 0x00;
+    public static final byte DATA = 0x01;
+    public static final byte FINISH = 0x02;
 
     int m = 5;
     int mb10 = 10485760;
     String host = "localhost";
+    //String host = "13.231.146.48";
 
     public static void main(String[] args) {
         new App(args[0], args[1], args[2]);
@@ -49,6 +56,30 @@ public class App {
         }
     }
 
+    private static byte[] unzipBytes(byte[] input){
+        ByteArrayInputStream bais = new ByteArrayInputStream(input);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
+
+        try{
+            ZipInputStream zis = new ZipInputStream(bais);
+            zis.getNextEntry();
+
+            byte[] buf = new byte[1024];
+
+            int len = zis.read(buf);
+
+            while (len > 0) {
+                baos.write(buf, 0, len);
+
+                len = zis.read(buf);
+            }
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+
+        return baos.toByteArray();
+    }
+
     public void client(int m, int w) throws IOException, InterruptedException {
         int len = 1024;
         int cnt = 0;
@@ -63,7 +94,7 @@ public class App {
         System.out.println("zmap.len=" + zmap.length);
 
         int size = 1024 * m;
-        int send_cnt = zmap.length / size;
+        int send_cnt = zmap.length / (size-1);
 
         int p = (int) Math.random() * 65535;
         DatagramChannel ch = DatagramChannel.open();
@@ -78,7 +109,8 @@ public class App {
         int ttl = 0;
         for (int i = 0; i < send_cnt; i++) {
             buf.clear();
-            buf.put(zmap, size * i, size);
+            buf.put(DATA);
+            buf.put(zmap, (size-1) * i, size-1);
             buf.flip();
             int sent = ch.send(buf, new InetSocketAddress(host, 1234));
             System.out.println(sent + " sent");
@@ -87,9 +119,10 @@ public class App {
             cnt++;
         }
 
-        if (zmap.length % size != 0) {
+        if (zmap.length % (size-1) != 0) {
             buf.clear();
-            buf.put(zmap, size * (send_cnt - 1), zmap.length % size);
+            buf.put(FINISH);
+            buf.put(zmap, (size-1) * (send_cnt - 1), zmap.length % (size-1));
             buf.flip();
             int sent = ch.send(buf, new InetSocketAddress(host, 1234));
             System.out.println(sent + " sent");
@@ -112,18 +145,28 @@ public class App {
         int size = 1024 * m;
         ByteBuffer buf = ByteBuffer.allocate(size);
 
+        DataBuffer db = new DataBuffer(1024*m);
+
         while (true) {
             buf.clear();
-            System.out.println(ch.receive(buf));
+            SocketAddress from = ch.receive(buf);
             buf.flip();
             byte[] data = new byte[buf.limit()];
             buf.get(data);
-            ttl += data.length;
-            int bs = ttl;
-            int ks = ttl / 1024;
-            int ms = ttl / 1024 / 1024;
-            System.out.println("received:" + cnt + "\t" + data.length + "\t" + bs + "byte " + ks + "kb " + ms + "mb");
-            cnt++;
+            byte header = data[0];
+            if ( header == DATA ){
+                db.put(from,data);
+                System.out.println("received:" + from + "\t" + data.length );
+            }else if ( header == FINISH ){
+                db.put(from,data);
+                byte[] tdata = db.get( from );
+                ttl = tdata.length;
+                int bs = ttl;
+                int ks = ttl / 1024;
+                int ms = ttl / 1024 / 1024;
+                System.out.println("total received:" + from + "\t" + data.length + "\t" + bs + "byte " + ks + "kb " + ms + "mb");
+            }
+
         }
     }
 
