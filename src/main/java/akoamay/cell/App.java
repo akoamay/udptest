@@ -24,7 +24,7 @@ public class App {
     //String host = "13.231.146.48";
 
     public static void main(String[] args) {
-        new App(args[0], args[1], args[2]);
+        new App(args[0], args[1], args[2], args[3]);
     }
 
     byte[] shorts2bytes(short[] input) {
@@ -190,7 +190,8 @@ public class App {
         }
     }
 
-    public App(String mode, String s, String s2) {
+    public App(String mode, String s, String s2, String s3) {
+        host = s3;
 
         int w = 5;
 
