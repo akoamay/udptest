@@ -105,14 +105,22 @@ public class App {
         int ms = zmap.length / 1024 / 1024;
         System.out.println("data size=" + bs + "byte " + ks + "kb " + ms + " mb");
 
+        InetSocketAddress addr = new InetSocketAddress(host, 1234);
+
         ByteBuffer buf = ByteBuffer.allocate(size);
         int ttl = 0;
+
+        buf.put(START);
+        buf.putInt( zmap.length + 8 );
+        buf.flip();
+        ch.send(buf, addr);
+
         for (int i = 0; i < send_cnt; i++) {
             buf.clear();
             buf.put(DATA);
             buf.put(zmap, (size-1) * i, size-1);
             buf.flip();
-            int sent = ch.send(buf, new InetSocketAddress(host, 1234));
+            int sent = ch.send(buf, addr);
             System.out.println(sent + " sent");
             ttl += size;
             Thread.sleep(w);
@@ -137,6 +145,7 @@ public class App {
     }
 
     public void server(int m) throws IOException {
+        System.out.println("server waiting..");
         DatagramChannel ch = DatagramChannel.open();
         int cnt = 0;
         int ttl = 0;
@@ -145,7 +154,7 @@ public class App {
         int size = 1024 * m;
         ByteBuffer buf = ByteBuffer.allocate(size);
 
-        DataBuffer db = new DataBuffer(1024*m);
+        DataBuffer db = new DataBuffer();
 
         while (true) {
             buf.clear();
@@ -153,12 +162,23 @@ public class App {
             buf.flip();
             byte[] data = new byte[buf.limit()];
             buf.get(data);
-            byte header = data[0];
+            ByteBuffer bb = ByteBuffer.wrap(data);
+
+            byte header = bb.get();
+
+
             if ( header == DATA ){
-                db.put(from,data);
-                System.out.println("received:" + from + "\t" + data.length );
+                byte[] b = new byte[bb.remaining()];
+                bb.get(b, 0, b.length);
+                db.put(from,b);
+                System.out.println("received:" + from + "\t" + b.length );
+            }else if ( header == START ){
+                int len = bb.getInt();
+                db.create(from,len);
             }else if ( header == FINISH ){
-                db.put(from,data);
+                byte[] b = new byte[bb.remaining()];
+                bb.get(b, 0, b.length);
+                db.put(from,b);
                 byte[] tdata = db.get( from );
                 ttl = tdata.length;
                 int bs = ttl;
