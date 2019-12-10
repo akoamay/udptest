@@ -21,10 +21,10 @@ public class App {
     int m = 5;
     int mb10 = 10485760;
     String host = "localhost";
-    //String host = "13.231.146.48";
+    // String host = "13.231.146.48";
 
     public static void main(String[] args) {
-        new App(args[0], args[1], args[2], args[3]);
+        new App(args);
     }
 
     byte[] shorts2bytes(short[] input) {
@@ -56,11 +56,11 @@ public class App {
         }
     }
 
-    private static byte[] unzipBytes(byte[] input){
+    private static byte[] unzipBytes(byte[] input) {
         ByteArrayInputStream bais = new ByteArrayInputStream(input);
         ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
 
-        try{
+        try {
             ZipInputStream zis = new ZipInputStream(bais);
             zis.getNextEntry();
 
@@ -73,7 +73,7 @@ public class App {
 
                 len = zis.read(buf);
             }
-        }catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -94,7 +94,7 @@ public class App {
         System.out.println("zmap.len=" + zmap.length);
 
         int size = 1024 * m;
-        int send_cnt = zmap.length / (size-1);
+        int send_cnt = zmap.length / (size - 1);
 
         int p = (int) Math.random() * 65535;
         DatagramChannel ch = DatagramChannel.open();
@@ -111,14 +111,14 @@ public class App {
         int ttl = 0;
 
         buf.put(START);
-        buf.putInt( zmap.length + 8 );
+        buf.putInt(zmap.length + 8);
         buf.flip();
         ch.send(buf, addr);
 
         for (int i = 0; i < send_cnt; i++) {
             buf.clear();
             buf.put(DATA);
-            buf.put(zmap, (size-1) * i, size-1);
+            buf.put(zmap, (size - 1) * i, size - 1);
             buf.flip();
             int sent = ch.send(buf, addr);
             System.out.println(sent + " sent");
@@ -127,10 +127,10 @@ public class App {
             cnt++;
         }
 
-        if (zmap.length % (size-1) != 0) {
+        if (zmap.length % (size - 1) != 0) {
             buf.clear();
             buf.put(FINISH);
-            buf.put(zmap, (size-1) * (send_cnt - 1), zmap.length % (size-1));
+            buf.put(zmap, (size - 1) * (send_cnt - 1), zmap.length % (size - 1));
             buf.flip();
             int sent = ch.send(buf, new InetSocketAddress(host, 1234));
             System.out.println(sent + " sent");
@@ -166,32 +166,39 @@ public class App {
 
             byte header = bb.get();
 
-
-            if ( header == DATA ){
+            if (header == DATA) {
                 byte[] b = new byte[bb.remaining()];
                 bb.get(b, 0, b.length);
-                db.put(from,b);
-                System.out.println("received:" + from + "\t" + b.length );
-            }else if ( header == START ){
+                db.put(from, b);
+                System.out.println("received:" + from + "\t" + b.length);
+            } else if (header == START) {
                 int len = bb.getInt();
-                db.create(from,len);
-            }else if ( header == FINISH ){
+                db.create(from, len);
+            } else if (header == FINISH) {
                 byte[] b = new byte[bb.remaining()];
                 bb.get(b, 0, b.length);
-                db.put(from,b);
-                byte[] tdata = db.get( from );
+                db.put(from, b);
+                byte[] tdata = db.get(from);
                 ttl = tdata.length;
                 int bs = ttl;
                 int ks = ttl / 1024;
                 int ms = ttl / 1024 / 1024;
-                System.out.println("total received:" + from + "\t" + data.length + "\t" + bs + "byte " + ks + "kb " + ms + "mb");
+                System.out.println(
+                        "total received:" + from + "\t" + data.length + "\t" + bs + "byte " + ks + "kb " + ms + "mb");
             }
 
         }
     }
 
-    public App(String mode, String s, String s2, String s3) {
-        host = s3;
+    public App(String[] args) {
+        CommandLineParser cp = new CommandLineParser().addOption("-mode").addOption("-host").addOption("-packet_size")
+                .addOption("-wait");
+        if (!cp.parse(args)) {
+            System.out.println("Invalid argument");
+            System.exit();
+        }
+
+        host = cp.getOptionValue("-host", "localhost");
 
         int w = 5;
 
