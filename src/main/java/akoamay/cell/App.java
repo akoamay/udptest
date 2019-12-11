@@ -191,8 +191,11 @@ public class App {
     }
 
     public App(String[] args) {
-        CommandLineParser cp = new CommandLineParser().addOption("-mode").addOption("-host").addOption("-packet_size")
-                .addOption("-wait");
+        CommandLineParser cp = new CommandLineParser()
+                                        .addOption("-mode")
+                                        .addOption("-host")
+                                        .addOption("-packet_size")
+                                        .addOption("-wait");
         if (!cp.parse(args)) {
             System.out.println("Invalid argument");
             System.exit();
@@ -200,6 +203,7 @@ public class App {
 
         host = cp.getOptionValue("-host", "localhost");
 
+        int m = cp.getOptionValue("-packet_size", "5" )
         int w = 5;
 
         try {
