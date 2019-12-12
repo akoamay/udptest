@@ -24,6 +24,7 @@ public class App {
     // String host = "13.231.146.48";
 
     public static void main(String[] args) {
+        System.setProperty("org.eclipse.jetty.util.log.class", NoLogger.class.getName());
         new App(args);
     }
 
@@ -80,7 +81,7 @@ public class App {
         return baos.toByteArray();
     }
 
-    public void client(int m, int w) throws IOException, InterruptedException {
+    public void client(int packetSize, int wait) throws IOException, InterruptedException {
         int len = 1024;
         int cnt = 0;
         short[] smap = new short[len * len];
@@ -93,7 +94,7 @@ public class App {
         byte[] zmap = zipBytes(map);
         System.out.println("zmap.len=" + zmap.length);
 
-        int size = 1024 * m;
+        int size = 1024 * packetSize;
         int send_cnt = zmap.length / (size - 1);
 
         int p = (int) Math.random() * 65535;
@@ -123,7 +124,7 @@ public class App {
             int sent = ch.send(buf, addr);
             System.out.println(sent + " sent");
             ttl += size;
-            Thread.sleep(w);
+            Thread.sleep(wait);
             cnt++;
         }
 
@@ -144,14 +145,14 @@ public class App {
         System.out.println("total sent= " + bs + "byte " + ks + "kb " + ms + "mb \tcnt=" + cnt);
     }
 
-    public void server(int m) throws IOException {
+    public void server(int packetSize) throws IOException {
         System.out.println("server waiting..");
         DatagramChannel ch = DatagramChannel.open();
         int cnt = 0;
         int ttl = 0;
         ch.socket().bind(new InetSocketAddress(1234));
 
-        int size = 1024 * m;
+        int size = 1024 * packetSize;
         ByteBuffer buf = ByteBuffer.allocate(size);
 
         DataBuffer db = new DataBuffer();
@@ -191,28 +192,29 @@ public class App {
     }
 
     public App(String[] args) {
+        int packetSize = 10;
+        int wait = 100;
+
         CommandLineParser cp = new CommandLineParser().addOption("-mode").addOption("-host").addOption("-packet_size")
                 .addOption("-wait");
+
         if (!cp.parse(args)) {
             System.out.println("Invalid argument");
-            System.exit();
+            System.exit(0);
         }
 
         host = cp.getOptionValue("-host", "localhost");
-
-        int w = 5;
-
-        try {
-            m = Integer.parseInt(s);
-            w = Integer.parseInt(s2);
-        } catch (Exception e) {
-        }
+        String mode = cp.getOptionValue("-mode", "s");
 
         try {
+            packetSize = Integer.parseInt(cp.getOptionValue("-packet_size", "10"));
+            wait = Integer.parseInt(cp.getOptionValue("-packet_size", "10"));
+
             if (mode.equals("s")) {
-                server(m);
+                HttpServer server = new HttpServer();
+                server(packetSize);
             } else {
-                client(m, w);
+                client(packetSize, wait);
             }
         } catch (Exception e) {
             e.printStackTrace();
